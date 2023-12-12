@@ -1,3 +1,4 @@
+use std::cmp;
 use std::collections::HashMap;
 use std::fs;
 
@@ -12,9 +13,13 @@ fn main() {
     ]);
     let lines = contents.lines();
     let mut sum: usize = 0;
+    let mut sum_power: u32 = 0;
 
     for line in lines {
         let mut game_possible = true;
+        let mut minimum_blue = 0;
+        let mut minimum_red = 0;
+        let mut minimum_green = 0;
 
         let colon_index = line.find(':').unwrap();
         let game_number = &line["Game ".len()..colon_index];
@@ -29,6 +34,12 @@ fn main() {
                 let number = &revealed_item[0..space_index];
                 let color = &revealed_item[space_index + 1..];
                 let number = number.parse::<u32>().unwrap();
+                match color {
+                    "red" => minimum_red = cmp::max(minimum_red, number),
+                    "green" => minimum_green = cmp::max(minimum_green, number),
+                    "blue" => minimum_blue = cmp::max(minimum_blue, number),
+                    _ => panic!("Unknown color: {color}")
+                }
                 let max_for_color = max_colors.get(color).unwrap();
                 let revealed_item_possible = number <= *max_for_color;
                 if !revealed_item_possible {
@@ -39,6 +50,9 @@ fn main() {
         if game_possible {
             sum += game_number;
         }
+        let power = minimum_red * minimum_green * minimum_blue;
+        sum_power += power;
     }
     println!("Sum: {sum}");
+    println!("Sum power: {sum_power}");
 }
