@@ -8,42 +8,54 @@ fn main() {
         .expect("Should have been able to read the file");
 
     let lines: Vec<&str> = contents.lines().collect();
-    let mut hands = parse_hands(&lines);
-    hands.sort();
+    let mut part1_hands = parse_hands(&lines, false);
+    part1_hands.sort();
     let mut sum: u32 = 0;
-    for (index, hand) in hands.iter().enumerate() {
+    for (index, hand) in part1_hands.iter().enumerate() {
         let rank = u32::try_from(index + 1).unwrap();
         let value = rank * hand.bid;
         sum += value;
         // println!("[{hand}] has rank {rank}");
     }
     println!("Part1: {sum}");
+
+    let mut part2_hands = parse_hands(&lines, true);
+    part2_hands.sort();
+    let mut sum: u32 = 0;
+    for (index, hand) in part2_hands.iter().enumerate() {
+        let rank = u32::try_from(index + 1).unwrap();
+        let value = rank * hand.bid;
+        sum += value;
+        // println!("[{hand}] has rank {rank}");
+    }
+    println!("Part2: {sum}");
 }
 
-fn parse_hands(lines: &Vec<&str>) -> Vec<Hand> {
+fn parse_hands(lines: &Vec<&str>, joker_rule: bool) -> Vec<Hand> {
     let mut hands = Vec::new();
     for line in lines {
-        hands.push(parse_hand(line));
+        hands.push(parse_hand(line, joker_rule));
     }
     hands
 }
 
-fn parse_hand(line: &str) -> Hand {
+fn parse_hand(line: &str, joker_rule: bool) -> Hand {
     let split: Vec<&str> = line.split_whitespace().collect();
     assert_eq!(2, split.len());
     let cards: Vec<char> = split[0].chars().collect();
     assert_eq!(5, cards.len());
     let cards = [
-        parse_card(cards[0]),
-        parse_card(cards[1]),
-        parse_card(cards[2]),
-        parse_card(cards[3]),
-        parse_card(cards[4])
+        parse_card(cards[0], joker_rule),
+        parse_card(cards[1], joker_rule),
+        parse_card(cards[2], joker_rule),
+        parse_card(cards[3], joker_rule),
+        parse_card(cards[4], joker_rule)
         ];
     let bid = split[1].parse::<u32>().unwrap();
     Hand {
         cards,
-        bid
+        bid,
+        joker_rule
     }
 }
 
@@ -87,7 +99,8 @@ impl cmp::PartialOrd for HandType {
 #[derive(Eq, Ord, Debug)]
 struct Hand {
     cards: [Card; 5],
-    bid: u32
+    bid: u32,
+    joker_rule: bool
 }
 
 impl Hand {
@@ -98,12 +111,17 @@ impl Hand {
             .and_modify(|e| { *e += 1})
             .or_insert(1);
         }
-        let max_count = map.values().max().unwrap();
+        let joker_count = map.remove(&Card::Joker).unwrap_or(0);
+        let max_count = map.values().max().unwrap_or(&0);
+        let max_card = map.iter().find(|e| e.1 == max_count).map(|e| *e.0);
+
+        let max_count =  max_count + joker_count;
         match max_count {
             5 => HandType::FiveOfAKind,
             4 => HandType::FourOfAKind,
             3 => {
-                if map.values().any(|v| *v == 2) { HandType::FullHouse } else { HandType::ThreeOfAKind }
+                let also_one_pair_found = map.iter().any(|e| *e.0 != max_card.unwrap() && *e.1 == 2);
+                if also_one_pair_found { HandType::FullHouse } else { HandType::ThreeOfAKind }
             },
             2 => {
                 if map.values().filter(|v| **v == 2).count() == 2 { HandType::TwoPair } else { HandType::OnePair }
@@ -146,7 +164,8 @@ enum Card {
     Five,
     Four,
     Three,
-    Two
+    Two,
+    Joker
 }
 
 impl Card {
@@ -164,7 +183,8 @@ impl Card {
             Card::Five => 5,
             Card::Four => 4,
             Card::Three => 3,
-            Card::Two => 2
+            Card::Two => 2,
+            Card::Joker => 1,
         }
     }
 
@@ -183,6 +203,7 @@ impl Card {
             Card::Four => '4',
             Card::Three => '3',
             Card::Two => '2',
+            Card::Joker => 'J',
         }
     }
 }
@@ -205,12 +226,12 @@ impl cmp::PartialOrd for Card {
     }
 }
 
-fn parse_card(symbol: char) -> Card {
+fn parse_card(symbol: char, joker_rule: bool) -> Card {
     match symbol {
         'A' => Card::Ace,
         'K' => Card::King,
         'Q' => Card::Queen,
-        'J' => Card::Jack,
+        'J' => if joker_rule { Card::Joker } else { Card::Jack },
         'T' => Card::Ten,
         '9' => Card::Nine,
         '8' => Card::Eight,
@@ -229,23 +250,65 @@ mod tests {
     use super::*;
 
     #[test]
-    fn hand_type() {
-        let result = parse_hand("TJQKA 1").hand_type();
+    fn hand_type_without_jokers() {
+        let result = parse_hand("TJQKA 1", false).hand_type();
         assert_eq!(HandType::HighCard, result);
 
-        let result = parse_hand("JQKAA 2").hand_type();
+        let result = parse_hand("JQKAA 2", false).hand_type();
         assert_eq!(HandType::OnePair, result);
 
-        let result = parse_hand("QKKAA 3").hand_type();
+        let result = parse_hand("QKKAA 3", false).hand_type();
         assert_eq!(HandType::TwoPair, result);
 
-        let result = parse_hand("QKAAA 4").hand_type();
+        let result = parse_hand("QKAAA 4", false).hand_type();
         assert_eq!(HandType::ThreeOfAKind, result);
 
-        let result = parse_hand("KAAAA 5").hand_type();
+        let result = parse_hand("KAAAA 5", false).hand_type();
         assert_eq!(HandType::FourOfAKind, result);
 
-        let result = parse_hand("AAAAA 6").hand_type();
+        let result = parse_hand("AAAAA 6", false).hand_type();
+        assert_eq!(HandType::FiveOfAKind, result);
+    }
+
+    #[test]
+    fn hand_type_with_jokers() {
+        let result = parse_hand("9TQKA 1", true).hand_type();
+        assert_eq!(HandType::HighCard, result);
+
+        let result = parse_hand("TTQKA 0", true).hand_type();
+        assert_eq!(HandType::OnePair, result);
+
+        let result = parse_hand("TJQKA 0", true).hand_type();
+        assert_eq!(HandType::OnePair, result);
+
+        let result = parse_hand("QKKAA 0", false).hand_type();
+        assert_eq!(HandType::TwoPair, result);
+
+        let result = parse_hand("QKAAA 0", false).hand_type();
+        assert_eq!(HandType::ThreeOfAKind, result);
+
+        let result = parse_hand("QKAAJ 0", true).hand_type();
+        assert_eq!(HandType::ThreeOfAKind, result);
+
+        let result = parse_hand("KKQQQ 0", true).hand_type();
+        assert_eq!(HandType::FullHouse, result);
+
+        let result = parse_hand("KKQQJ 0", true).hand_type();
+        assert_eq!(HandType::FullHouse, result);
+
+        let result = parse_hand("KAAAA 0", true).hand_type();
+        assert_eq!(HandType::FourOfAKind, result);
+
+        let result = parse_hand("KAAAJ 0", true).hand_type();
+        assert_eq!(HandType::FourOfAKind, result);
+
+        let result = parse_hand("AAAAA 0", true).hand_type();
+        assert_eq!(HandType::FiveOfAKind, result);
+
+        let result = parse_hand("AAAJJ 0", true).hand_type();
+        assert_eq!(HandType::FiveOfAKind, result);
+
+        let result = parse_hand("JJJJJ 0", true).hand_type();
         assert_eq!(HandType::FiveOfAKind, result);
     }
 }
