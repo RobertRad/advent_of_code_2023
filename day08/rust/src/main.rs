@@ -18,6 +18,7 @@ fn main() {
     // println!("Directions: {:?}", directions);
     let regex = Regex::new(r"(?<key>\w{3}) = \((?<left>\w{3}), (?<right>\w{3})\)").unwrap();
     let mut map = HashMap::new();
+    let mut starting_areas = Vec::new();
     for line in lines.iter().skip(2) {
         let captures = regex.captures(line).unwrap();
         let key = captures.name("key").unwrap().as_str();
@@ -25,24 +26,33 @@ fn main() {
         let right = captures.name("right").unwrap().as_str();
         let node = Node { key, left, right };
         map.insert(key, node);
-    }
-    let mut steps = 0;
-    let mut current_area = "AAA";
-    loop {
-        let index = steps % directions.len();
-        let direction = directions.get(index).unwrap();
-        let current_node = map.get(current_area).unwrap();
-        current_area = match direction {
-            Direction::Left => current_node.left,
-            Direction::Right => current_node.right,
-        };
-        steps += 1;
-        // println!("Step {steps}: {current_node}");
-        if current_area == "ZZZ" {
-            break;
+        if key.ends_with("A") {
+            starting_areas.push(key);
         }
     }
-    println!("Took {steps} steps to find target.");
+    let mut all_steps = Vec::new();
+    for area in starting_areas {
+        let mut steps = 0;
+        let mut current_area = area;
+        loop {
+            let index = steps % directions.len();
+            let direction = directions.get(index).unwrap();
+            let current_node = map.get(current_area).unwrap();
+            current_area = match direction {
+                Direction::Left => current_node.left,
+                Direction::Right => current_node.right,
+            };
+            steps += 1;
+            // println!("Step {steps}: {current_node}");
+            if current_area.ends_with("Z") {
+                break;
+            }
+        }
+        println!("{:?} - took {steps} steps to find target.", area);
+        all_steps.push(u64::try_from(steps).unwrap());
+    }
+    let lcm = all_steps.iter().fold(1u64, |acc, x| num::integer::lcm(acc, *x));
+    println!("lcm: {lcm}");
 }
 
 #[derive(Debug)]
