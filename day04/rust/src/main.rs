@@ -12,9 +12,20 @@ fn main() {
     part2(&cards);
 }
 
-fn parse(lines: &Vec<&str>) -> Vec<(Vec<u32>, Vec<u32>)> {
+struct Card {
+    winning_numbers: Vec<u32>,
+    my_numbers: Vec<u32>,
+}
+
+impl Card {
+    fn new(winning_numbers: Vec<u32>, my_numbers: Vec<u32>) -> Card {
+        return Card { winning_numbers, my_numbers }
+    }
+}
+
+fn parse(lines: &Vec<&str>) -> Vec<Card> {
     let start_regex = Regex::new("Card +\\d+: ").unwrap();
-    let mut result: Vec<(Vec<u32>, Vec<u32>)> = Vec::new();
+    let mut result: Vec<Card> = Vec::new();
     for line in lines {
         let begin_content = start_regex.find(line).unwrap().end();
         let splitted = line[begin_content..].split("|").collect::<Vec<&str>>();
@@ -28,18 +39,17 @@ fn parse(lines: &Vec<&str>) -> Vec<(Vec<u32>, Vec<u32>)> {
 
         let winning_numbers = extract_numbers(&splitted, 0);
         let my_numbers = extract_numbers(&splitted, 1);
-        result.push((winning_numbers, my_numbers));
+        result.push(Card::new(winning_numbers, my_numbers));
     }
     result
 }
 
-fn part1(cards: &Vec<(Vec<u32>, Vec<u32>)>) {
+fn part1(cards: &Vec<Card>) {
     let mut sum: u32 = 0;
     for card in cards {
-        let (winning_numbers, my_numbers) = card;
-        let winning_numbers: BTreeSet<u32>= BTreeSet::from_iter(winning_numbers.iter().cloned());
+        let winning_numbers: BTreeSet<u32>= BTreeSet::from_iter(card.winning_numbers.iter().cloned());
         let mut match_count = 0;
-        for number in my_numbers {
+        for number in card.my_numbers.iter().clone() {
             if winning_numbers.contains(&number) {
                 match_count += 1;
             }
@@ -50,17 +60,14 @@ fn part1(cards: &Vec<(Vec<u32>, Vec<u32>)>) {
     println!("Part1: {sum}");
 }
 
-fn part2(cards: &Vec<(Vec<u32>, Vec<u32>)>) {
+fn part2(cards: &Vec<Card>) {
     let mut sum: u32 = 0;
     let mut number_of_scratchcards: Vec<u32> = vec![1; cards.len()];
 
     for (index, card) in cards.iter().enumerate() {
-        let (winning_numbers, my_numbers) = card;
-        // println!("winning_numbers: {:?}", winning_numbers);
-        // println!("my_numbers: {:?}", my_numbers);
-        let winning_numbers: BTreeSet<u32>= BTreeSet::from_iter(winning_numbers.iter().cloned());
+        let winning_numbers: BTreeSet<u32>= BTreeSet::from_iter(card.winning_numbers.iter().cloned());
         let mut match_count = 0;
-        for number in my_numbers {
+        for number in card.my_numbers.iter().clone() {
             if winning_numbers.contains(&number) {
                 match_count += 1;
             }

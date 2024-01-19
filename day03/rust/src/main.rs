@@ -16,32 +16,30 @@ fn part1(lines: &Vec<&str>) {
     for (index, line) in lines.iter().enumerate() {
         let mut start_at = 0;
         loop {
-            let number = find_number(line, start_at);
-            match number {
-                None => break,
-                Some(number) => {
-                    start_at = number.end_index;
-                    let symbol_before = if number.start_index == 0 { '.' } else { line.chars().nth(number.start_index - 1).unwrap() };
-                    let symbol_after = if number.end_index == line.len() { '.' } else { line.chars().nth(number.end_index).unwrap() };
-                    let symbol_before_or_after = symbol_before != '.' || symbol_after != '.';
-                    let previous_line = if index > 0 { Some(lines[index - 1]) } else { None };
-                    let has_symbol_in_previous_line = match previous_line {
-                        None => false,
-                        Some(previous_line) => has_symbol(previous_line, number.start_index, number.end_index),
-                    };
-                    let next_line = if index < lines.len() - 1 { Some(lines[index + 1]) } else { None };
-                    let has_symbol_in_next_line = match next_line {
-                        None => false,
-                        Some(next_line) => has_symbol(next_line, number.start_index, number.end_index),
-                    };
-                    let symbol_in_over_or_below = has_symbol_in_previous_line || has_symbol_in_next_line;
-                    let symbol_adjacent = symbol_before_or_after || symbol_in_over_or_below;
-                    if symbol_adjacent {
-                        sum += number.number;
-                    }
-                    // println!("Line [{index}]: {line} - {}, {symbol_adjacent}", number.number);
+            if let Some(number) = find_number(line, start_at) {
+                start_at = number.end_index;
+                let symbol_before = if number.start_index == 0 { '.' } else { line.chars().nth(number.start_index - 1).unwrap() };
+                let symbol_after = if number.end_index == line.len() { '.' } else { line.chars().nth(number.end_index).unwrap() };
+                let symbol_before_or_after = symbol_before != '.' || symbol_after != '.';
+                let previous_line = if index > 0 { Some(lines[index - 1]) } else { None };
+                let has_symbol_in_previous_line = match previous_line {
+                    None => false,
+                    Some(previous_line) => has_symbol(previous_line, number.start_index, number.end_index),
+                };
+                let next_line = if index < lines.len() - 1 { Some(lines[index + 1]) } else { None };
+                let has_symbol_in_next_line = match next_line {
+                    None => false,
+                    Some(next_line) => has_symbol(next_line, number.start_index, number.end_index),
+                };
+                let symbol_in_over_or_below = has_symbol_in_previous_line || has_symbol_in_next_line;
+                let symbol_adjacent = symbol_before_or_after || symbol_in_over_or_below;
+                if symbol_adjacent {
+                    sum += number.number;
                 }
-            };
+                // println!("Line [{index}]: {line} - {}, {symbol_adjacent}", number.number);
+            } else {
+                break;
+            }
         }
     }
     println!("Part1: {sum}");
@@ -49,18 +47,16 @@ fn part1(lines: &Vec<&str>) {
 
 fn find_number(line: &str, start_at: usize) -> Option<FoundNumber> {
     let sub = &line[start_at..];
-    let start_index = sub.find(char::is_numeric);
-    match start_index {
-        None => None,
-        Some(start_index) => {
-            let start_index = start_index + start_at;
-            let sub = &line[start_index..];
-            let len = sub.find(|c: char| !c.is_numeric()).unwrap_or_else(|| sub.len());
-            let end_index = start_index + len;
-            let number = &sub[..len];
-            let number = number.parse::<u32>().unwrap();
-            Some(FoundNumber {number, start_index, end_index })
-        }
+    if let Some(start_index) = sub.find(char::is_numeric) {
+        let start_index = start_index + start_at;
+        let sub = &line[start_index..];
+        let len = sub.find(|c: char| !c.is_numeric()).unwrap_or_else(|| sub.len());
+        let end_index = start_index + len;
+        let number = &sub[..len];
+        let number = number.parse::<u32>().unwrap();
+        Some(FoundNumber {number, start_index, end_index })
+    } else {
+        None
     }
 }
 
@@ -86,31 +82,21 @@ fn part2(lines: &Vec<&str>) {
     for (index, line) in lines.iter().enumerate() {
         let mut start_at = 0;
         loop {
-            let number = find_number(line, start_at);
-            match number {
-                None => break,
-                Some(found_number) => {
-                    start_at = found_number.end_index;
-                    let number = found_number.number;
-                    let neighbour_symbol = get_neighbour_symbol(found_number, line, index, lines);
-                    // println!("Line [{index}]: {line} - {number}, {:?}", neighbour_symbol);
-                    let neighbour_symbol = neighbour_symbol.and_then(|s| if s.c == '*' { Some(s) } else { None });
-                    match neighbour_symbol {
-                        None => {},
-                        Some(neighbour_symbol) => {
-                            let previous_number = found_gears.get(&neighbour_symbol);
-                            match previous_number {
-                                None => {
-                                    found_gears.insert(neighbour_symbol, number);
-                                },
-                                Some(previous_number) => {
-                                    sum += number * previous_number;
-                                }
-                            }
-                        }
+            if let Some(found_number) = find_number(line, start_at) {
+                start_at = found_number.end_index;
+                let number = found_number.number;
+                let neighbour_symbol = get_neighbour_symbol(found_number, line, index, lines);
+                // println!("Line [{index}]: {line} - {number}, {:?}", neighbour_symbol);
+                if let Some(neighbour_symbol) = neighbour_symbol.and_then(|s| if s.c == '*' { Some(s) } else { None }) {
+                    if let Some(previous_number) = found_gears.get(&neighbour_symbol) {
+                        sum += number * previous_number;
+                    } else {
+                        found_gears.insert(neighbour_symbol, number);
                     }
                 }
-            };
+            } else {
+                break;
+            }
         }
     }
     println!("Part2: {sum}");
